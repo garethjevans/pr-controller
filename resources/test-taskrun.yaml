@@ -1,0 +1,30 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: pr-controller-
+spec:
+  params:
+    - name: server
+      value: http://pr-controller/
+    - name: file
+      value: test.txt
+    - name: content
+      value: "test content"
+  taskSpec:
+    steps:
+    - name: upload
+      image: alpine/curl:latest
+      script: |
+        echo "Generating test content..."
+        echo "$(params.content)" > $(params.file)
+        cat $(params.file)
+
+        echo "Uploading file..."
+        curl -F 'file=@$(params.file)' $(params.server)
+    - name: download
+      image: alpine/curl:latest
+      script: |
+        echo "Downloading file..."
+        curl -o $(params.file) $(params.server)files/$(params.file)
+        cat $(params.file)
