@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/garethjevans/pr-controller/pkg/prcontroller/server"
 	"net/http"
+
+	"github.com/garethjevans/pr-controller/pkg/prcontroller/server"
 
 	"github.com/spf13/cobra"
 )

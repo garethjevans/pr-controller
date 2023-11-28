@@ -2,13 +2,14 @@ package server
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
 	"github.com/garethjevans/pr-controller/pkg/prcontroller/handler"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	"github.com/sirupsen/logrus"
-	"net/http"
-	"os"
-	"strings"
 )
 
 type webhook struct {
