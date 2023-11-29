@@ -1,0 +1,30 @@
+#@ load("@ytt:data", "data")
+---
+apiVersion: kctrl.carvel.dev/v1alpha1
+kind: PackageBuild
+metadata:
+  name: pr.apps.tanzu.vmware.com
+spec:
+  release:
+    - resource: {}
+  template:
+    spec:
+      app:
+        spec:
+          deploy:
+            - kapp: {}
+          template:
+            - ytt:
+                paths:
+                  - carvel/config.yaml
+            - kbld:
+                paths:
+                  - kbld-config.yaml
+                  - carvel/config.yaml
+      export:
+        - imgpkgBundle:
+            image: #@ data.values.build.registry_host + "/" + data.values.build.registry_project + "/pr-bundle"
+            useKbldImagesLock: true
+          includePaths:
+            - package-resources.yml
+            - carvel/config.yaml

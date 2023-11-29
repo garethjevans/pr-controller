@@ -1,0 +1,55 @@
+---
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: Package
+metadata:
+  name: pr.apps.tanzu.vmware.com.0.0.0
+spec:
+  refName: pr.apps.tanzu.vmware.com
+  releasedAt: null
+  template:
+    spec:
+      deploy:
+        - kapp: {}
+      fetch:
+        - git: {}
+      template:
+        - ytt:
+            paths:
+              - config.yaml
+        - kbld: {}
+  valuesSchema:
+    openAPIv3: null
+  version: 0.0.0
+---
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: PackageMetadata
+metadata:
+  name: pr.apps.tanzu.vmware.com
+spec:
+  displayName: pr
+  providerName: VMware
+  longDescription: pr.apps.tanzu.vmware.com
+  shortDescription: pr.apps.tanzu.vmware.com
+  maintainers:
+    - name: VMware
+  iconSVGBase64: |-
+    PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNIDEwIDEwIEggOTAgViA5MCBIIDEwIEwgMTAgMTAiLz48L3N2Zz4K
+  supportDescription: "Support available from VMware. Refer to the VMware Product Guide for specific support terms."
+---
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  annotations:
+    kctrl.carvel.dev/local-fetch-0: .
+  name: pr
+spec:
+  packageRef:
+    refName: pr.apps.tanzu.vmware.com
+    versionSelection:
+      constraints: 0.0.0
+      prereleases:
+        identifiers:
+          - 'dev'
+          - 'rc'
+          - 'build'
+  serviceAccountName: pr-sa

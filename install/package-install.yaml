@@ -1,0 +1,15 @@
+---
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  name: pr
+  namespace: tap-install
+  annotations:
+    ext.packaging.carvel.dev/fetch-0-secret-name: dev-registry-credentials
+    packaging.carvel.dev/downgradable: ""
+spec:
+  serviceAccountName: tap-install-sa
+  packageRef:
+    refName: pr.apps.tanzu.vmware.com
+    versionSelection:
+      constraints: 0.0.0

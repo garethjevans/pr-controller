@@ -97,9 +97,9 @@ func (fe FlagError) Unwrap() error {
 
 // RootCmd is the entry point of command-line execution.
 var RootCmd = &cobra.Command{
-	Use:   "scm",
-	Short: "provides commands for interacting with different scm providers",
-	Long:  `a CLI used to interact with different scm providers`,
+	Use:   "pr-controller",
+	Short: "Provides a PR Handler for TAP Supply Chains",
+	Long:  `Provides a PR Handler for TAP Supply Chains`,
 
 	SilenceErrors: false,
 	SilenceUsage:  true,
