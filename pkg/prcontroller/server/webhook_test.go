@@ -1,15 +1,16 @@
 package server_test
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	discoveryfake "k8s.io/client-go/discovery/fake"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	discoveryfake "k8s.io/client-go/discovery/fake"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/garethjevans/pr-controller/pkg/prcontroller/handler"
 	"github.com/garethjevans/pr-controller/pkg/prcontroller/server"
