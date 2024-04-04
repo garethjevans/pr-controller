@@ -66,6 +66,8 @@ spec:
         name: controller
         args:
           - run
+          - --bind-address
+          - 0.0.0.0
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

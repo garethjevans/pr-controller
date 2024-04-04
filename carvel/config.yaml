@@ -143,6 +143,8 @@ spec:
       containers:
       - args:
         - run
+        - --bind-address
+        - 0.0.0.0
         image: controller:latest
         name: controller
         resources:

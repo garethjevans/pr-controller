@@ -50,9 +50,11 @@ func (w *webhook) Handle(wr http.ResponseWriter, req *http.Request) {
 			handler.PullRequest(prHook, wr)
 			return
 		}
+	default:
+		logrus.Infof("Unhandled webhook '%s'", hook.Kind())
 	}
 
-	responseHTTP(wr, 204, "Webhook Accepted")
+	responseHTTP(wr, http.StatusAccepted, "Webhook Accepted")
 }
 
 func responseHTTPError(w http.ResponseWriter, statusCode int, response string) {

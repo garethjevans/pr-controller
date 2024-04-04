@@ -112,7 +112,7 @@ func convertToPullRequestType(resource unstructured.Unstructured, pr *scm.PullRe
 				"source": map[string]interface{}{
 					"git": map[string]interface{}{
 						"url":    pr.Repo.Clone,
-						"branch": pr.PullRequest.Base.Ref,
+						"branch": pr.PullRequest.Head.Ref,
 						"commit": pr.PullRequest.Sha,
 					},
 				},

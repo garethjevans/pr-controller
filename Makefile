@@ -30,7 +30,7 @@ BUILDFLAGS := -trimpath -ldflags \
 		-X $(ROOT_PACKAGE)/pkg/version.Branch='$(BRANCH)'\
 		-X $(ROOT_PACKAGE)/pkg/version.BuildDate='$(BUILD_DATE)'\
 		-X $(ROOT_PACKAGE)/pkg/version.GoVersion='$(GO_VERSION)'"
-CGO_ENABLED = 0
+CGO = 0
 BUILDTAGS :=
 
 GOPATH1=$(firstword $(subst :, ,$(GOPATH)))
@@ -48,11 +48,11 @@ version:
 
 .PHONY: build
 build: $(GO_DEPENDENCIES)
-       CGO_ENABLED=$(CGO_ENABLED) $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(BINARY_NAME) cmd/$(NAME)/$(NAME).go
+       CGO_ENABLED=$(CGO) $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(BINARY_NAME) cmd/$(NAME)/$(NAME).go
 
 .PHONY: test
 test:
-	DISABLE_SSO=true CGO_ENABLED=$(CGO_ENABLED) $(GO) test -coverprofile=coverage.out $(PACKAGE_DIRS)
+	DISABLE_SSO=true CGO_ENABLED=$(CGO) $(GO) test -coverprofile=coverage.out $(PACKAGE_DIRS)
 
 .PHONY: cover
 cover:
