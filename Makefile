@@ -6,6 +6,9 @@ GO_NOMOD := GO111MODULE=off go
 PACKAGE_NAME := github.com/garethjevans/pr-controller
 ROOT_PACKAGE := github.com/garethjevans/pr-controller
 ORG := garethjevans
+REGISTRY_HOST ?= dev.registry.tanzu.vmware.com
+REGISTRY_PROJECT ?= supply-chain-choreographer/pr-controller
+CONTROLLER_VERSION ?= 0.0.0
 
 # set dev version unless VERSION is explicitly set via environment
 VERSION ?= $(shell echo "$$(git describe --abbrev=0 --tags 2>/dev/null)-dev+$(REV)" | sed 's/^v//')
@@ -27,7 +30,7 @@ BUILDFLAGS := -trimpath -ldflags \
 		-X $(ROOT_PACKAGE)/pkg/version.Branch='$(BRANCH)'\
 		-X $(ROOT_PACKAGE)/pkg/version.BuildDate='$(BUILD_DATE)'\
 		-X $(ROOT_PACKAGE)/pkg/version.GoVersion='$(GO_VERSION)'"
-CGO_ENABLED = 0
+CGO = 0
 BUILDTAGS :=
 
 GOPATH1=$(firstword $(subst :, ,$(GOPATH)))
@@ -36,29 +39,6 @@ export PATH := $(PATH):$(GOPATH1)/bin
 
 CLIENTSET_NAME_VERSIONED := v0.15.11
 
-.PHONY: build
-build: $(GO_DEPENDENCIES)
-	CGO_ENABLED=$(CGO_ENABLED) $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(BINARY_NAME) cmd/$(NAME)/$(NAME).go
-
-linux: $(GO_DEPENDENCIES)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 $(GO) build $(BUILDFLAGS) -o build/linux/$(NAME) cmd/$(NAME)/$(NAME).go
-	chmod +x build/linux/$(NAME)
-
-arm: $(GO_DEPENDENCIES)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=arm $(GO) build $(BUILDFLAGS) -o build/arm/$(NAME) cmd/$(NAME)/$(NAME).go
-	chmod +x build/arm/$(NAME)
-
-win: $(GO_DEPENDENCIES)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=windows GOARCH=amd64 $(GO) build $(BUILDFLAGS) -o build/win/$(NAME)-windows-amd64.exe cmd/$(NAME)/$(NAME).go
-
-darwin: $(GO_DEPENDENCIES)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=darwin GOARCH=amd64 $(GO) build $(BUILDFLAGS) -o build/darwin/$(NAME) cmd/$(NAME)/$(NAME).go
-	chmod +x build/darwin/$(NAME)
-
-deploy-local: build
-	mkdir -p ~/bin
-	cp build/$(BINARY_NAME) ~/bin/$(BINARY_NAME)
-
 all: version check
 
 check: fmt lint build test
@@ -66,21 +46,19 @@ check: fmt lint build test
 version:
 	echo "Go version: $(GO_VERSION)"
 
+.PHONY: build
+build: $(GO_DEPENDENCIES)
+       CGO_ENABLED=$(CGO) $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(BINARY_NAME) cmd/$(NAME)/$(NAME).go
+
+.PHONY: test
 test:
-	DISABLE_SSO=true CGO_ENABLED=$(CGO_ENABLED) $(GO) test -coverprofile=coverage.out $(PACKAGE_DIRS)
+	DISABLE_SSO=true CGO_ENABLED=$(CGO) $(GO) test -coverprofile=coverage.out $(PACKAGE_DIRS)
 
-testv:
-	DISABLE_SSO=true CGO_ENABLED=$(CGO_ENABLED) $(GO) test -test.v $(PACKAGE_DIRS)
-
-testrich:
-	DISABLE_SSO=true CGO_ENABLED=$(CGO_ENABLED) richgo test -test.v $(PACKAGE_DIRS)
-
-test1:
-	DISABLE_SSO=true CGO_ENABLED=$(CGO_ENABLED) $(GO) test  -count=1  -short ./... -test.v  -run $(TEST)
-
+.PHONY: cover
 cover:
 	$(GO) tool cover -func coverage.out | grep total
 
+.PHONY: coverage
 coverage:
 	$(GO) tool cover -html=coverage.out
 
@@ -101,28 +79,18 @@ clean:
 modtidy:
 	$(GO) mod tidy
 
-mod: modtidy build
+mod: modtidy
 
 .PHONY: release clean arm
-
 
 generate-fakes:
 	$(GO) generate ./...
 
 generate-all: generate-fakes
 
-.PHONY: goreleaser
-goreleaser:
-	step-go-releaser --organisation=$(ORG) --revision=$(REV) --branch=$(BRANCH) --build-date=$(BUILD_DATE) --go-version=$(GO_VERSION) --root-package=$(ROOT_PACKAGE) --version=$(VERSION)
-
-docs: build
-	./build/pr-controller docs
-
+.PHONY: lint
 lint:
 	golangci-lint run --fix
-
-run: build ## Build and run the application locally.
-	./build/pr-controller run
 
 install: ## Install onto the local k8s cluster.
 	kubectl apply -f resources/server-it.yaml
@@ -131,3 +99,98 @@ install: ## Install onto the local k8s cluster.
 help: ## Print help for each make target
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+##@ Build Dependencies
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+## Tool Binaries
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+DIEGEN ?= $(LOCALBIN)/diegen
+KUTTL ?= $(LOCALBIN)/kubectl-kuttl
+KO ?= $(LOCALBIN)/ko
+YTT ?= $(LOCALBIN)/ytt
+KAPP ?= $(LOCALBIN)/kapp
+PACKAGE_VALIDATOR ?= $(LOCALBIN)/package-validator
+
+## Tool Versions
+KUSTOMIZE_VERSION ?= v5.2.1
+CONTROLLER_TOOLS_VERSION ?= v0.13.0
+KO_VERSION ?= v0.14.1
+YTT_VERSION ?= v0.45.4
+KAPP_VERSION ?= v0.58.0
+PACKAGE_VALIDATOR_VERSION ?= main
+
+KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
+$(KUSTOMIZE): $(LOCALBIN)
+	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION); then \
+		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing."; \
+		rm -rf $(LOCALBIN)/kustomize; \
+	fi
+	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
+
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
+$(CONTROLLER_GEN): $(LOCALBIN)
+	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: diegen
+diegen: $(DIEGEN)
+$(DIEGEN): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install dies.dev/diegen
+
+.PHONY: ko
+ko: $(KO)
+$(KO): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/google/ko@$(KO_VERSION)
+
+.PHONY: ytt
+ytt: $(YTT)
+$(YTT): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/vmware-tanzu/carvel-ytt/cmd/ytt@$(YTT_VERSION)
+
+.PHONY: kapp
+kapp: $(KAPP)
+$(KAPP): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/vmware-tanzu/carvel-kapp/cmd/kapp@$(KAPP_VERSION)
+
+.PHONY: package-validator
+package-validator: $(PACKAGE_VALIDATOR)
+$(PACKAGE_VALIDATOR): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/garethjevans/package-validator/cmd/package-validator@$(PACKAGE_VALIDATOR_VERSION)
+
+.PHONY: carvel
+carvel: kustomize
+	$(KUSTOMIZE) build config/default > carvel/config.yaml
+
+.PHONY: package
+package: carvel ytt package-validator
+	$(YTT) -f build-templates/kbld-config.yaml -f build-templates/values-schema.yaml -v build.registry_host=$(REGISTRY_HOST) -v build.registry_project=$(REGISTRY_PROJECT) > kbld-config.yaml
+	$(YTT) -f build-templates/package-build.yml -f build-templates/values-schema.yaml -v build.registry_host=$(REGISTRY_HOST) -v build.registry_project=$(REGISTRY_PROJECT) > package-build.yml
+	$(YTT) -f build-templates/package-resources.yml -f build-templates/values-schema.yaml > package-resources.yml
+
+	kctrl package release -v $(CONTROLLER_VERSION) -y --debug
+
+	rm -f kbld-config.yaml
+	rm -f package-build.yml
+	rm -f package-resources.yml
+
+	$(PACKAGE_VALIDATOR) validate --path carvel-artifacts
+
+.PHONY: install-from-package
+install-from-package:
+	kubectl apply -n tap-install -f carvel-artifacts/packages/pr.apps.tanzu.vmware.com/package.yml
+	kubectl apply -n tap-install -f carvel-artifacts/packages/pr.apps.tanzu.vmware.com/metadata.yml
+	kubectl apply -n tap-install -f install/package-install.yaml
+
+.PHONY: uninstall-from-package
+uninstall-from-package:
+	kubectl delete -f install/package-install.yaml --ignore-not-found=$(ignore-not-found)
+	kubectl delete -f carvel-artifacts/packages/pr.apps.tanzu.vmware.com/package.yml --ignore-not-found=$(ignore-not-found)
+	kubectl delete -f carvel-artifacts/packages/pr.apps.tanzu.vmware.com/metadata.yml --ignore-not-found=$(ignore-not-found)

@@ -3,11 +3,12 @@ package handler
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strings"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"net/http"
-	"strings"
 
 	"k8s.io/client-go/restmapper"
 
@@ -51,7 +52,7 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 	logrus.Infof("Got %s for all-workloads", grs)
 
 	if len(grs) == 0 {
-		responseHTTPError(w, 500, fmt.Sprintf("unable to locate category all-workloads"))
+		responseHTTPError(w, 400, "unable to locate category all-workloads")
 		return
 	}
 
@@ -73,11 +74,11 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 
 		for _, mainBranchResource := range mainBranchResources.Items {
 			// we assume that the source is structured how we think...
-			gitUrl, _, _ := unstructured.NestedString(mainBranchResource.Object, "spec", "source", "git", "url")
+			gitURL, _, _ := unstructured.NestedString(mainBranchResource.Object, "spec", "source", "git", "url")
 
-			// if the gitUrl match
-			if strings.TrimSuffix(pr.Repo.Clone, ".git") == strings.TrimSuffix(gitUrl, ".git") {
-				logrus.Infof("Found matching %s for url %s", mainBranchResources.GetKind(), gitUrl)
+			// if the gitURL match
+			if strings.TrimSuffix(pr.Repo.Clone, ".git") == strings.TrimSuffix(gitURL, ".git") {
+				logrus.Infof("Found matching %s for url %s", mainBranchResources.GetKind(), gitURL)
 				if v != nil {
 					u := convertToPullRequestType(mainBranchResource, pr)
 					logrus.Infof("Creating new resource: %+v\n", u)
@@ -88,13 +89,10 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 					}
 					logrus.Infof("Created new resource: %+v\n", create)
 				}
-
 			} else {
 				logrus.Infof("%s with name %s is a miss", mainBranchResource.GetKind(), mainBranchResource.GetName())
 			}
 		}
-
-		//}
 	}
 
 	// FIXME send an accepted response at the end
@@ -114,7 +112,7 @@ func convertToPullRequestType(resource unstructured.Unstructured, pr *scm.PullRe
 				"source": map[string]interface{}{
 					"git": map[string]interface{}{
 						"url":    pr.Repo.Clone,
-						"branch": pr.PullRequest.Base.Ref,
+						"branch": pr.PullRequest.Head.Ref,
 						"commit": pr.PullRequest.Sha,
 					},
 				},
@@ -123,9 +121,12 @@ func convertToPullRequestType(resource unstructured.Unstructured, pr *scm.PullRe
 	}
 }
 
-func toMap(grs []schema.GroupResource) map[schema.GroupResource]*schema.GroupResource {
+func toMap(_ []schema.GroupResource) map[schema.GroupResource]*schema.GroupResource {
 	// FIXME we need to implement this properly
 	m := make(map[schema.GroupResource]*schema.GroupResource)
 	m[schema.GroupResource{Group: "example.com", Resource: "examples"}] = &schema.GroupResource{Group: "example.com", Resource: "examplepullrequests"}
+	m[schema.GroupResource{Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackages"}] = &schema.GroupResource{Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackageprs"}
+	m[schema.GroupResource{Group: "supplychain.app.tanzu.vmware.com", Resource: "containerappworkflows"}] = &schema.GroupResource{Group: "supplychain.app.tanzu.vmware.com", Resource: "containerappworkflowprs"}
+
 	return m
 }

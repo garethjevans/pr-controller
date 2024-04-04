@@ -1,15 +1,16 @@
 package server_test
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	discoveryfake "k8s.io/client-go/discovery/fake"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	discoveryfake "k8s.io/client-go/discovery/fake"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/garethjevans/pr-controller/pkg/prcontroller/handler"
 	"github.com/garethjevans/pr-controller/pkg/prcontroller/server"
@@ -51,10 +52,38 @@ func TestGitHubRequest(t *testing.T) {
 		Resource: "examplepullrequests",
 	}
 
+	carvelPackageGVR := schema.GroupVersionResource{
+		Group:    "dogfooding.tanzu.broadcom.com",
+		Version:  "v1alpha1",
+		Resource: "carvelpackages",
+	}
+
+	carvelPackagePullRequestGVR := schema.GroupVersionResource{
+		Group:    "dogfooding.tanzu.broadcom.com",
+		Version:  "v1alpha1",
+		Resource: "carvelpackageprs",
+	}
+
+	containerAppGVR := schema.GroupVersionResource{
+		Group:    "supplychain.app.tanzu.vmware.com",
+		Version:  "v1alpha1",
+		Resource: "containerappworkflows",
+	}
+
+	containerAppPullRequestGVR := schema.GroupVersionResource{
+		Group:    "supplychain.app.tanzu.vmware.com",
+		Version:  "v1alpha1",
+		Resource: "containerappworkflowprs",
+	}
+
 	handler.Dynamic = dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(),
 		map[schema.GroupVersionResource]string{
-			exampleGVR:            "ExampleList",
-			examplePullRequestGVR: "ExamplePullRequestList",
+			exampleGVR:                  "ExampleList",
+			examplePullRequestGVR:       "ExamplePullRequestList",
+			carvelPackageGVR:            "CarvelPackageList",
+			carvelPackagePullRequestGVR: "CarvelPackagePRList",
+			containerAppGVR:             "ContainerAppWorkflowList",
+			containerAppPullRequestGVR:  "ContainerAppWorkflowPRList",
 		},
 		&unstructured.Unstructured{Object: map[string]interface{}{
 			"apiVersion": "example.com/v1alpha1",

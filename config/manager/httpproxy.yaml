@@ -1,0 +1,12 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: proxy
+  namespace: system
+spec:
+  routes:
+  - services:
+    - name: pr-controller
+      port: 8080
+  virtualhost:
+    fqdn: pr.next.testenv.co.uk

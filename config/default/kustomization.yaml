@@ -1,0 +1,6 @@
+namespace: pr-system
+namePrefix: pr-
+
+resources:
+- ../rbac
+- ../manager
