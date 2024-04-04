@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/garethjevans/pr-controller/pkg/prcontroller/server"
 
@@ -43,7 +44,12 @@ func NewRunCmd() *cobra.Command {
 			a := fmt.Sprintf("%s:%d", BindAddress, Port)
 			fmt.Printf("listening on %s\n", a)
 
-			return http.ListenAndServe(a, mux)
+			s := &http.Server{
+				Addr:              a,
+				ReadHeaderTimeout: 5 * time.Second,
+			}
+
+			return s.ListenAndServe()
 		},
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
