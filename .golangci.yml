@@ -88,7 +88,7 @@ linters:
   # - gocritic
   # - exhaustive (TODO: enable after next release; current release at time of writing is v1.27)
   # - gochecknoglobals
-    - godox
+  # - godox
   # - goerr113
   # - nestif
     - staticcheck

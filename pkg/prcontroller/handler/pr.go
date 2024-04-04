@@ -52,7 +52,7 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 	logrus.Infof("Got %s for all-workloads", grs)
 
 	if len(grs) == 0 {
-		responseHTTPError(w, 400, fmt.Sprintf("unable to locate category all-workloads"))
+		responseHTTPError(w, 400, "unable to locate category all-workloads")
 		return
 	}
 
@@ -121,9 +121,12 @@ func convertToPullRequestType(resource unstructured.Unstructured, pr *scm.PullRe
 	}
 }
 
-func toMap(grs []schema.GroupResource) map[schema.GroupResource]*schema.GroupResource {
+func toMap(_ []schema.GroupResource) map[schema.GroupResource]*schema.GroupResource {
 	// FIXME we need to implement this properly
 	m := make(map[schema.GroupResource]*schema.GroupResource)
 	m[schema.GroupResource{Group: "example.com", Resource: "examples"}] = &schema.GroupResource{Group: "example.com", Resource: "examplepullrequests"}
+	m[schema.GroupResource{Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackages"}] = &schema.GroupResource{Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackageprs"}
+	m[schema.GroupResource{Group: "supplychain.app.tanzu.vmware.com", Resource: "containerappworkflows"}] = &schema.GroupResource{Group: "supplychain.app.tanzu.vmware.com", Resource: "containerappworkflowprs"}
+
 	return m
 }
