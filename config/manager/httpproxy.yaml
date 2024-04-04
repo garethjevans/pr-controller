@@ -9,4 +9,4 @@ spec:
     - name: pr-controller
       port: 8080
   virtualhost:
-    fqdn: pr.next.testenv.co.uk
+    fqdn: pr.internal.testenv.co.uk

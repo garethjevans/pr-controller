@@ -7,7 +7,7 @@ sources:
     path: .
     pack:
       build:
-        builder: paketobuildpacks/builder:tiny
+        builder: paketobuildpacks/builder-jammy-tiny
 destinations:
   - image: controller:latest
     newImage: #@ data.values.build.registry_host + "/" + data.values.build.registry_project + "/pr"

@@ -6,5 +6,4 @@ resources:
 # subjects if changing service account names.
 - service_account.yaml
 - pull_secret.yaml
-- role.yaml
 - role_binding.yaml

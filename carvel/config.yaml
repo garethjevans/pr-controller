@@ -27,25 +27,6 @@ metadata:
   namespace: pr-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: pr-manager-role
-rules:
-- apiGroups:
-  - example.com
-  resources:
-  - examples
-  - examplepullrequests
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
@@ -59,7 +40,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: pr-manager-role
+  name: manager-role
 subjects:
 - kind: ServiceAccount
   name: pr-controller-manager
@@ -79,7 +60,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: workloads
+  name: supply-chain-workloads
 subjects:
 - kind: ServiceAccount
   name: pr-controller-manager
@@ -178,4 +159,4 @@ spec:
     - name: pr-controller
       port: 8080
   virtualhost:
-    fqdn: pr.next.testenv.co.uk
+    fqdn: pr.internal.testenv.co.uk
