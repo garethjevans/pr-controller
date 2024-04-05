@@ -27,7 +27,12 @@ func NewWebHook(driver string) (WebHook, error) {
 		return nil, err
 	}
 
-	return &webhook{wh: wh, driver: driver}, nil
+	w := &webhook{wh: wh, driver: driver}
+
+	logrus.Infof("Starting Handler for %s", driver)
+	logrus.Infof("%s secret is: %s", w.EnvVar(), os.Getenv(w.EnvVar()))
+
+	return w, nil
 }
 
 func (w *webhook) EnvVar() string {

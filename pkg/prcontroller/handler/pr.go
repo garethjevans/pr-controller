@@ -121,12 +121,32 @@ func convertToPullRequestType(resource unstructured.Unstructured, pr *scm.PullRe
 	}
 }
 
-func toMap(_ []schema.GroupResource) map[schema.GroupResource]*schema.GroupResource {
+func toMap(in []schema.GroupResource) map[schema.GroupResource]*schema.GroupResource {
 	// FIXME we need to implement this properly
 	m := make(map[schema.GroupResource]*schema.GroupResource)
-	m[schema.GroupResource{Group: "example.com", Resource: "examples"}] = &schema.GroupResource{Group: "example.com", Resource: "examplepullrequests"}
-	m[schema.GroupResource{Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackages"}] = &schema.GroupResource{Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackageprs"}
-	m[schema.GroupResource{Group: "supplychain.app.tanzu.vmware.com", Resource: "containerappworkflows"}] = &schema.GroupResource{Group: "supplychain.app.tanzu.vmware.com", Resource: "containerappworkflowprs"}
 
+	for _, i := range in {
+		if isNotPullRequestResource(i) {
+			m[i] = locatePullRequestResourceForBaseResource(i, in)
+		}
+	}
+	
 	return m
+}
+
+func locatePullRequestResourceForBaseResource(base schema.GroupResource, in []schema.GroupResource) *schema.GroupResource {
+	for _, i := range in {
+		if i.Group == base.Group && !isNotPullRequestResource(i) && matches(base.Resource, i.Resource) {
+			return &i
+		}
+	}
+	return nil
+}
+
+func matches(base string, resource string) bool {
+	return strings.TrimSuffix(base, "s") == strings.TrimSuffix(strings.TrimSuffix(resource, "prs"), "pullrequests")
+}
+
+func isNotPullRequestResource(i schema.GroupResource) bool {
+	return strings.HasSuffix(i.Resource, "prs") && strings.HasSuffix(i.Resource, "pullrequests")
 }

@@ -39,6 +39,16 @@ func NewRunCmd() *cobra.Command {
 			}
 			mux.HandleFunc("/gitlab", gl.Handle)
 
+			mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+				fmt.Println("ok handler")
+				_, _ = writer.Write([]byte("ok"))
+			})
+
+			mux.HandleFunc("/ready", func(writer http.ResponseWriter, request *http.Request) {
+				fmt.Println("ok handler")
+				_, _ = writer.Write([]byte("ok"))
+			})
+
 			// FIXME should we handle more here?
 
 			a := fmt.Sprintf("%s:%d", BindAddress, Port)
