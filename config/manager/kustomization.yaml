@@ -1,3 +1,4 @@
 resources:
 - manager.yaml
 - httpproxy.yaml
+- secrets.yaml

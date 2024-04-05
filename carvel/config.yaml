@@ -117,7 +117,7 @@ spec:
   template:
     metadata:
       annotations:
-        kubectl.kubernetes.io/default-container: manager
+        kubectl.kubernetes.io/default-container: controller
       labels:
         control-plane: controller-manager
     spec:
@@ -126,8 +126,25 @@ spec:
         - run
         - --bind-address
         - 0.0.0.0
+        env:
+        - name: GITLAB_SHARED_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: shared-secret
+              name: gitlab-secret
+        - name: GITHUB_SHARED_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: shared-secret
+              name: github-secret
         image: controller:latest
         name: controller
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
         resources:
           limits:
             cpu: 1000m
@@ -160,3 +177,27 @@ spec:
       port: 8080
   virtualhost:
     fqdn: pr.internal.testenv.co.uk
+---
+apiVersion: secretgen.k14s.io/v1alpha1
+kind: Password
+metadata:
+  name: pr-github-secret
+  namespace: pr-system
+spec:
+  length: 64
+  secretTemplate:
+    stringData:
+      shared-secret: $(value)
+    type: Opaque
+---
+apiVersion: secretgen.k14s.io/v1alpha1
+kind: Password
+metadata:
+  name: pr-gitlab-secret
+  namespace: pr-system
+spec:
+  length: 64
+  secretTemplate:
+    stringData:
+      shared-secret: $(value)
+    type: Opaque
