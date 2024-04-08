@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -40,24 +41,23 @@ func NewRunCmd() *cobra.Command {
 			mux.HandleFunc("/gitlab", gl.Handle)
 
 			mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-				fmt.Println("ok handler")
-				_, _ = writer.Write([]byte("ok"))
+				fmt.Fprintln(writer, "ok (/) handler")
 			})
 
 			mux.HandleFunc("/ready", func(writer http.ResponseWriter, request *http.Request) {
-				fmt.Println("ok handler")
-				_, _ = writer.Write([]byte("ok"))
+				fmt.Fprintln(writer, "ok (ready) handler")
 			})
 
-			// FIXME should we handle more here?
-
 			a := fmt.Sprintf("%s:%d", BindAddress, Port)
-			fmt.Printf("listening on %s\n", a)
+			logrus.Infof("listening on %s", a)
 
 			s := &http.Server{
 				Addr:              a,
 				ReadHeaderTimeout: 5 * time.Second,
+				Handler:           mux,
 			}
+
+			logrus.Infof("Starting...")
 
 			return s.ListenAndServe()
 		},

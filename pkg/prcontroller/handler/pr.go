@@ -29,18 +29,21 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 		// can we locate a workload for this hook?
 		config, err := rest.InClusterConfig()
 		if err != nil {
+			logrus.Errorf("Unable to load config: %v", err)
 			responseHTTPError(w, 500, fmt.Sprintf("Unable to load config: %v", err))
 			return
 		}
 
 		Dynamic, err = dynamic.NewForConfig(config)
 		if err != nil {
+			logrus.Errorf("Unable to get dynamic client: %v", err)
 			responseHTTPError(w, 500, fmt.Sprintf("Unable to get dynamic client: %v", err))
 			return
 		}
 
 		Discovery, err = discovery.NewDiscoveryClientForConfig(config)
 		if err != nil {
+			logrus.Errorf("Unable to get discovery client: %v", err)
 			responseHTTPError(w, 500, fmt.Sprintf("Unable to get discovery client: %v", err))
 			return
 		}
@@ -58,6 +61,8 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 
 	// we need to locate all types that have a corresponding *PullRequest type
 	mappedGrs := toMap(grs)
+
+	logrus.Infof("mapped GroupResources %s", mappedGrs)
 
 	for k, v := range mappedGrs {
 		logrus.Infof("%s -> %s", k, v)
@@ -130,7 +135,7 @@ func toMap(in []schema.GroupResource) map[schema.GroupResource]*schema.GroupReso
 			m[i] = locatePullRequestResourceForBaseResource(i, in)
 		}
 	}
-	
+
 	return m
 }
 

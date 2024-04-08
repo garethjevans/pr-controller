@@ -47,8 +47,8 @@ version:
 	echo "Go version: $(GO_VERSION)"
 
 .PHONY: build
-build: $(GO_DEPENDENCIES)
-       CGO_ENABLED=$(CGO) $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(BINARY_NAME) cmd/$(NAME)/$(NAME).go
+build:
+	CGO_ENABLED=$(CGO) $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(BINARY_NAME) cmd/$(NAME)/$(NAME).go
 
 .PHONY: test
 test:

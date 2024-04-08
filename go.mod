@@ -1,6 +1,6 @@
 module github.com/garethjevans/pr-controller
 
-go 1.20
+go 1.22
 
 require (
 	github.com/jenkins-x/go-scm v1.14.21
