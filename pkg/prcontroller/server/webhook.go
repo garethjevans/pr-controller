@@ -40,11 +40,13 @@ func (w *webhook) EnvVar() string {
 }
 
 func (w *webhook) Handle(wr http.ResponseWriter, req *http.Request) {
+	logrus.Infof("handling request...")
+
 	hook, err := w.wh.Parse(req, func(webhook scm.Webhook) (string, error) {
 		return os.Getenv(w.EnvVar()), nil
 	})
 	if err != nil {
-		responseHTTPError(wr, 500, fmt.Sprintf("unable to parse webhook event: %v", err))
+		handler.ResponseHTTPError(wr, 400, fmt.Sprintf("unable to parse webhook event: %v", err))
 		return
 	}
 
@@ -57,23 +59,9 @@ func (w *webhook) Handle(wr http.ResponseWriter, req *http.Request) {
 		}
 	default:
 		logrus.Infof("Unhandled webhook '%s'", hook.Kind())
+		handler.ResponseHTTPError(wr, 400, fmt.Sprintf("Unhandled webhook '%s'", hook.Kind()))
+		return
 	}
 
-	responseHTTP(wr, http.StatusAccepted, "Webhook Accepted")
-}
-
-func responseHTTPError(w http.ResponseWriter, statusCode int, response string) {
-	logrus.WithFields(logrus.Fields{
-		"response":    response,
-		"status-code": statusCode,
-	}).Info(response)
-	http.Error(w, response, statusCode)
-}
-
-func responseHTTP(w http.ResponseWriter, statusCode int, response string) {
-	logrus.WithFields(logrus.Fields{
-		"response":    response,
-		"status-code": statusCode,
-	}).Info(response)
-	http.Error(w, response, statusCode)
+	handler.ResponseHTTP(wr, http.StatusAccepted, "Webhook Accepted")
 }

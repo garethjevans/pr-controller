@@ -40,12 +40,12 @@ func NewRunCmd() *cobra.Command {
 			}
 			mux.HandleFunc("/gitlab", gl.Handle)
 
-			mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-				fmt.Fprintln(writer, "ok (/) handler")
-			})
-
 			mux.HandleFunc("/ready", func(writer http.ResponseWriter, request *http.Request) {
 				fmt.Fprintln(writer, "ok (ready) handler")
+			})
+
+			mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+				fmt.Fprintln(writer, "ok (/) handler")
 			})
 
 			a := fmt.Sprintf("%s:%d", BindAddress, Port)

@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func responseHTTPError(w http.ResponseWriter, statusCode int, response string) {
+func ResponseHTTPError(w http.ResponseWriter, statusCode int, response string) {
 	logrus.WithFields(logrus.Fields{
 		"response":    response,
 		"status-code": statusCode,
@@ -14,7 +14,7 @@ func responseHTTPError(w http.ResponseWriter, statusCode int, response string) {
 	http.Error(w, response, statusCode)
 }
 
-func responseHTTP(w http.ResponseWriter, statusCode int, response string) {
+func ResponseHTTP(w http.ResponseWriter, statusCode int, response string) {
 	logrus.WithFields(logrus.Fields{
 		"response":    response,
 		"status-code": statusCode,
