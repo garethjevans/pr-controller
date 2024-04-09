@@ -27,20 +27,34 @@ metadata:
   namespace: pr-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pr-supply-chains
+rules:
+- apiGroups:
+  - supply-chain.apps.tanzu.vmware.com
+  resources:
+  - supplychains
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: pr
-    app.kubernetes.io/instance: manager-rolebinding
+    app.kubernetes.io/instance: manager-workloads-rolebinding
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: clusterrolebinding
     app.kubernetes.io/part-of: pr
-  name: pr-manager-rolebinding
+  name: pr-manager-supply-chains
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: manager-role
+  name: pr-supply-chains
 subjects:
 - kind: ServiceAccount
   name: pr-controller-manager

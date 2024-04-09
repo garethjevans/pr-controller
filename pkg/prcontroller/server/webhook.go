@@ -40,7 +40,7 @@ func (w *webhook) EnvVar() string {
 }
 
 func (w *webhook) Handle(wr http.ResponseWriter, req *http.Request) {
-	logrus.Infof("handling request...")
+	logrus.Debugf("handling request... %+v", req)
 
 	hook, err := w.wh.Parse(req, func(webhook scm.Webhook) (string, error) {
 		return os.Getenv(w.EnvVar()), nil

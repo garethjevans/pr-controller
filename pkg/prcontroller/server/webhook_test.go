@@ -76,6 +76,12 @@ func TestGitHubRequest(t *testing.T) {
 		Resource: "containerappworkflowprs",
 	}
 
+	supplyChainGvr := schema.GroupVersionResource{
+		Group:    "supply-chain.apps.tanzu.vmware.com",
+		Version:  "v1alpha1",
+		Resource: "supplychains",
+	}
+
 	handler.Dynamic = dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(),
 		map[schema.GroupVersionResource]string{
 			exampleGVR:                  "ExampleList",
@@ -84,6 +90,7 @@ func TestGitHubRequest(t *testing.T) {
 			carvelPackagePullRequestGVR: "CarvelPackagePRList",
 			containerAppGVR:             "ContainerAppWorkflowList",
 			containerAppPullRequestGVR:  "ContainerAppWorkflowPRList",
+			supplyChainGvr:              "SupplyChainList",
 		},
 		&unstructured.Unstructured{Object: map[string]interface{}{
 			"apiVersion": "example.com/v1alpha1",

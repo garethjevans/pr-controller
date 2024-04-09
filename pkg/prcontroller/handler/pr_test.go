@@ -1,23 +1,23 @@
 package handler
 
 import (
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"github.com/garethjevans/pr-controller/pkg/defines"
 	"reflect"
 	"testing"
 )
 
 func TestToMap(t *testing.T) {
 	type args struct {
-		in []schema.GroupResource
+		in []defines.GroupVersionResourceKind
 	}
 	tests := []struct {
 		name string
 		args args
-		want map[schema.GroupResource]*schema.GroupResource
+		want map[defines.GroupVersionResourceKind]defines.GroupVersionResourceKind
 	}{
 		{
 			name: "actual",
-			args: args{in: []schema.GroupResource{
+			args: args{in: []defines.GroupVersionResourceKind{
 				{
 					Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackageprs",
 				},
@@ -31,8 +31,8 @@ func TestToMap(t *testing.T) {
 					Group: "supplychain.app.tanzu.vmware.com", Resource: "containerappworkflows",
 				},
 			}},
-			want: map[schema.GroupResource]*schema.GroupResource{
-				schema.GroupResource{Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackages"}: {Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackageprs"},
+			want: map[defines.GroupVersionResourceKind]defines.GroupVersionResourceKind{
+				defines.GroupVersionResourceKind{Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackages"}: {Group: "dogfooding.tanzu.broadcom.com", Resource: "carvelpackageprs"},
 			},
 		},
 	}

@@ -3,14 +3,13 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/garethjevans/pr-controller/pkg/defines"
 	"net/http"
 	"strings"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"k8s.io/client-go/restmapper"
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/sirupsen/logrus"
@@ -25,6 +24,11 @@ var (
 )
 
 func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
+	logrus.Infof("handling %s for PR-%d", pr.Action, pr.PullRequest.Number)
+	logrus.Debugf("%+v", pr)
+
+	ctx := context.Background()
+
 	if Dynamic == nil {
 		// can we locate a workload for this hook?
 		config, err := rest.InClusterConfig()
@@ -40,75 +44,140 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 			ResponseHTTPError(w, 500, fmt.Sprintf("Unable to get dynamic client: %v", err))
 			return
 		}
-
-		Discovery, err = discovery.NewDiscoveryClientForConfig(config)
-		if err != nil {
-			logrus.Errorf("Unable to get discovery client: %v", err)
-			ResponseHTTPError(w, 500, fmt.Sprintf("Unable to get discovery client: %v", err))
-			return
-		}
 	}
 
-	expander := restmapper.NewDiscoveryCategoryExpander(Discovery)
-	grs, _ := expander.Expand("all-workloads")
-
-	logrus.Infof("Got %s for all-workloads", grs)
-
-	if len(grs) == 0 {
-		ResponseHTTPError(w, 400, "unable to locate category all-workloads")
+	supplyChainList, err := Dynamic.Resource(schema.GroupVersionResource{
+		Group:    "supply-chain.apps.tanzu.vmware.com",
+		Version:  "v1alpha1",
+		Resource: "supplychains",
+	}).List(ctx, v1.ListOptions{})
+	if err != nil {
+		logrus.Errorf("Unable to get supply chains: %v", err)
+		ResponseHTTPError(w, 500, fmt.Sprintf("Unable to get supply chains: %v", err))
 		return
 	}
 
-	// we need to locate all types that have a corresponding *PullRequest type
-	mappedGrs := ToMap(grs)
+	var kinds []defines.GroupVersionResourceKind
+	for _, supplyChain := range supplyChainList.Items {
+		kinds = append(kinds, defines.Workload(supplyChain))
+	}
 
-	logrus.Infof("mapped GroupResources %s", mappedGrs)
+	// we need to locate all types that have a corresponding *PullRequest type
+	mappedGrs := ToMap(kinds)
+
+	logrus.Debugf("mapped GroupResources %s", mappedGrs)
+
+	logrus.Infof("seaching for resources for git url %s and target branch %s", strings.TrimSuffix(pr.Repo.Clone, ".git"), pr.PullRequest.Target)
 
 	for k, v := range mappedGrs {
-		logrus.Infof("%s -> %s", k, v)
-		if v != nil {
-			mainBranchResources, err := Dynamic.Resource(k.WithVersion("v1alpha1")).List(context.Background(), v1.ListOptions{
-				LabelSelector: "",
-			})
-			if err != nil {
-				ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
-				return
-			}
+		logrus.Infof("%s -> %s", k.Kind, v.Kind)
 
-			logrus.Infof("Found %d resources for %s", len(mainBranchResources.Items), k)
+		mainBranchResources, err := Dynamic.Resource(k.ToGroupVersionResource()).List(context.Background(), v1.ListOptions{
+			LabelSelector: "",
+		})
+		if err != nil {
+			ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
+			return
+		}
 
-			for _, mainBranchResource := range mainBranchResources.Items {
-				// we assume that the source is structured how we think...
-				gitURL, _, _ := unstructured.NestedString(mainBranchResource.Object, "spec", "source", "git", "url")
+		logrus.Infof("Found %d resources for %s", len(mainBranchResources.Items), k.Kind)
 
-				// if the gitURL match
-				if strings.TrimSuffix(pr.Repo.Clone, ".git") == strings.TrimSuffix(gitURL, ".git") {
-					logrus.Infof("Found matching %s for url %s", mainBranchResources.GetKind(), gitURL)
-					if v != nil {
-						u := convertToPullRequestType(mainBranchResource, v, pr)
-						logrus.Infof("Creating new resource: %+v\n", u)
-						create, err := Dynamic.Resource(v.WithVersion("v1alpha1")).Namespace(u.GetNamespace()).Create(context.Background(), &u, v1.CreateOptions{})
-						if err != nil {
-							ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
-							return
-						}
-						logrus.Infof("Created new resource: %+v\n", create)
-					}
-				} else {
-					logrus.Infof("%s with name %s is a miss", mainBranchResource.GetKind(), mainBranchResource.GetName())
+		found := false
+
+		for _, mainBranchResource := range mainBranchResources.Items {
+			// we assume that the source is structured how we think...
+			gitURL, _, _ := unstructured.NestedString(mainBranchResource.Object, "spec", "source", "git", "url")
+			branch, _, _ := unstructured.NestedString(mainBranchResource.Object, "spec", "source", "git", "branch")
+
+			// if the gitURL match
+			if strings.TrimSuffix(pr.Repo.Clone, ".git") == strings.TrimSuffix(gitURL, ".git") && pr.PullRequest.Target == branch {
+				logrus.Infof("Found matching %s for url %s", mainBranchResources.GetKind(), gitURL)
+				found = true
+				u := convertToPullRequestType(mainBranchResource, v, pr)
+
+				switch pr.Action.String() {
+				case "create", "updated", "opened", "reopened":
+					createOrUpdate(Dynamic, u, w, v)
+					return
+				case "merged", "closed":
+					deleteIfExists(Dynamic, u, w, v)
+					ResponseHTTP(w, http.StatusAccepted, "PR Accepted")
+					return
+				default:
+					logrus.Warnf("unhandled action %s", pr.Action)
 				}
 			}
+		}
+
+		if !found {
+			logrus.Infof("couldn't find a matching %s resource for PR-%d", k.Kind, pr.PullRequest.Number)
+		}
+
+	}
+
+	ResponseHTTP(w, http.StatusAccepted, "PR Accepted")
+}
+
+func deleteIfExists(d dynamic.Interface, u unstructured.Unstructured, w http.ResponseWriter, v defines.GroupVersionResourceKind) {
+	logrus.Infof("Delete handler: %s", u.GetName())
+
+	// we should check if this resource already exists
+	got, err := d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Get(context.Background(), u.GetName(), v1.GetOptions{})
+	if err != nil {
+		logrus.Infof("unable to determine if %s exists: %v", u.GetName(), err)
+	}
+
+	if got != nil {
+		logrus.Infof("Creating new resource: %+v\n", u)
+		err := d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Delete(context.Background(), got.GetName(), v1.DeleteOptions{})
+		if err != nil {
+			ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
+			return
+		}
+		logrus.Infof("Deleted resource: %s\n", got.GetName())
+	}
+}
+
+func createOrUpdate(d dynamic.Interface, u unstructured.Unstructured, w http.ResponseWriter, v defines.GroupVersionResourceKind) {
+	logrus.Infof("CreateOrUpdate handler: %s", u.GetName())
+
+	// we should check if this resource already exists
+	got, err := d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Get(context.Background(), u.GetName(), v1.GetOptions{})
+	if err != nil {
+		logrus.Infof("unable to determine if %s exists: %v", u.GetName(), err)
+	}
+
+	if got == nil {
+		logrus.Infof("Creating new resource: %+v\n", u)
+		create, err := d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Create(context.Background(), &u, v1.CreateOptions{})
+		if err != nil {
+			ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
+			return
+		}
+		logrus.Infof("Created new resource: %+v\n", create)
+	} else {
+		logrus.Infof("Updating resource: %+v\n", got)
+		branch, _, _ := unstructured.NestedString(u.UnstructuredContent(), "spec", "source", "git", "branch")
+		_ = unstructured.SetNestedField(got.UnstructuredContent(), branch, "spec", "source", "git", "branch")
+
+		commit, _, _ := unstructured.NestedString(u.UnstructuredContent(), "spec", "source", "git", "commit")
+		_ = unstructured.SetNestedField(got.UnstructuredContent(), commit, "spec", "source", "git", "commit")
+
+		err, _ := d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Update(context.Background(), got, v1.UpdateOptions{})
+		if err != nil {
+			ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
+			return
 		}
 	}
 
 	ResponseHTTP(w, http.StatusAccepted, "PR Accepted")
 }
 
-func convertToPullRequestType(resource unstructured.Unstructured, gv *schema.GroupResource, pr *scm.PullRequestHook) unstructured.Unstructured {
+func convertToPullRequestType(resource unstructured.Unstructured, gvrk defines.GroupVersionResourceKind, pr *scm.PullRequestHook) unstructured.Unstructured {
 	return unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": resource.GetAPIVersion(),
-			"kind":       strings.TrimSuffix(gv.Resource, "s"),
+			"kind":       gvrk.Kind,
 			"metadata": map[string]interface{}{
 				"name":      fmt.Sprintf("%s-pr-%d", resource.GetName(), pr.PullRequest.Number),
 				"namespace": resource.GetNamespace(),
@@ -128,8 +197,8 @@ func convertToPullRequestType(resource unstructured.Unstructured, gv *schema.Gro
 	}
 }
 
-func ToMap(in []schema.GroupResource) map[schema.GroupResource]*schema.GroupResource {
-	m := make(map[schema.GroupResource]*schema.GroupResource)
+func ToMap(in []defines.GroupVersionResourceKind) map[defines.GroupVersionResourceKind]defines.GroupVersionResourceKind {
+	m := make(map[defines.GroupVersionResourceKind]defines.GroupVersionResourceKind)
 
 	for _, i := range in {
 		//fmt.Printf("checking %s\n", i)
@@ -137,7 +206,7 @@ func ToMap(in []schema.GroupResource) map[schema.GroupResource]*schema.GroupReso
 			//fmt.Printf("%s is not a pull request CR\n", i)
 			pr := locatePullRequestResourceForBaseResource(i, in)
 			if pr != nil {
-				m[i] = pr
+				m[i] = *pr
 			}
 		}
 	}
@@ -145,7 +214,7 @@ func ToMap(in []schema.GroupResource) map[schema.GroupResource]*schema.GroupReso
 	return m
 }
 
-func locatePullRequestResourceForBaseResource(base schema.GroupResource, in []schema.GroupResource) *schema.GroupResource {
+func locatePullRequestResourceForBaseResource(base defines.GroupVersionResourceKind, in []defines.GroupVersionResourceKind) *defines.GroupVersionResourceKind {
 	for _, i := range in {
 		if i.Group == base.Group && !isNotPullRequestResource(i) && matches(base.Resource, i.Resource) {
 			return &i
@@ -158,6 +227,6 @@ func matches(base string, resource string) bool {
 	return strings.TrimSuffix(base, "s") == strings.TrimSuffix(strings.TrimSuffix(resource, "prs"), "pullrequests")
 }
 
-func isNotPullRequestResource(i schema.GroupResource) bool {
+func isNotPullRequestResource(i defines.GroupVersionResourceKind) bool {
 	return !strings.HasSuffix(i.Resource, "prs") && !strings.HasSuffix(i.Resource, "pullrequests")
 }

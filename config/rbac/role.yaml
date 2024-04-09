@@ -1,0 +1,14 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: supply-chains
+rules:
+  - apiGroups:
+      - supply-chain.apps.tanzu.vmware.com
+    resources:
+      - supplychains
+    verbs:
+      - get
+      - list
+      - watch
