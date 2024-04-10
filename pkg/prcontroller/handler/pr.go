@@ -101,7 +101,6 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 					return
 				case "merged", "closed":
 					deleteIfExists(Dynamic, u, w, v)
-					ResponseHTTP(w, http.StatusAccepted, "PR Accepted")
 					return
 				default:
 					logrus.Warnf("unhandled action %s", pr.Action)
@@ -128,14 +127,17 @@ func deleteIfExists(d dynamic.Interface, u unstructured.Unstructured, w http.Res
 	}
 
 	if got != nil {
-		logrus.Infof("Creating new resource: %+v\n", u)
+		logrus.Infof("Deleting resource: %s\n", u.GetName())
 		err := d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Delete(context.Background(), got.GetName(), v1.DeleteOptions{})
 		if err != nil {
+			logrus.Errorf("unable to delete %s: %v", got.GetName(), err)
 			ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
 			return
 		}
 		logrus.Infof("Deleted resource: %s\n", got.GetName())
 	}
+
+	ResponseHTTP(w, http.StatusCreated, "Resource Deleted")
 }
 
 func createOrUpdate(d dynamic.Interface, u unstructured.Unstructured, w http.ResponseWriter, v defines.GroupVersionResourceKind) {
@@ -148,29 +150,31 @@ func createOrUpdate(d dynamic.Interface, u unstructured.Unstructured, w http.Res
 	}
 
 	if got == nil {
-		logrus.Infof("Creating new resource: %+v\n", u)
+		logrus.Infof("Creating new resource: %+v", u)
 		create, err := d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Create(context.Background(), &u, v1.CreateOptions{})
 		if err != nil {
+			logrus.Errorf("unable to create %s: %v", got.GetName(), err)
 			ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
 			return
 		}
-		logrus.Infof("Created new resource: %+v\n", create)
+		logrus.Infof("Created new resource: %s", create.GetName())
 	} else {
-		logrus.Infof("Updating resource: %+v\n", got)
+		logrus.Infof("Updating resource: %s", got.GetName())
 		branch, _, _ := unstructured.NestedString(u.UnstructuredContent(), "spec", "source", "git", "branch")
 		_ = unstructured.SetNestedField(got.UnstructuredContent(), branch, "spec", "source", "git", "branch")
 
 		commit, _, _ := unstructured.NestedString(u.UnstructuredContent(), "spec", "source", "git", "commit")
 		_ = unstructured.SetNestedField(got.UnstructuredContent(), commit, "spec", "source", "git", "commit")
 
-		err, _ := d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Update(context.Background(), got, v1.UpdateOptions{})
+		_, err = d.Resource(v.ToGroupVersionResource()).Namespace(u.GetNamespace()).Update(context.Background(), got, v1.UpdateOptions{})
 		if err != nil {
+			logrus.Errorf("unable to update %s: %v", got.GetName(), err)
 			ResponseHTTPError(w, 500, fmt.Sprintf("%v", err))
 			return
 		}
 	}
 
-	ResponseHTTP(w, http.StatusAccepted, "PR Accepted")
+	ResponseHTTP(w, http.StatusCreated, "Resource Created")
 }
 
 func convertToPullRequestType(resource unstructured.Unstructured, gvrk defines.GroupVersionResourceKind, pr *scm.PullRequestHook) unstructured.Unstructured {
