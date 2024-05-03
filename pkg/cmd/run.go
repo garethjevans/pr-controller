@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/garethjevans/pr-controller/pkg/prcontroller/server"
 

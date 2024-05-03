@@ -3,9 +3,10 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/garethjevans/pr-controller/pkg/defines"
 	"net/http"
 	"strings"
+
+	"github.com/garethjevans/pr-controller/pkg/defines"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -57,9 +58,9 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 		return
 	}
 
-	var kinds []defines.GroupVersionResourceKind
-	for _, supplyChain := range supplyChainList.Items {
-		kinds = append(kinds, defines.Workload(supplyChain))
+	kinds := make([]defines.GroupVersionResourceKind, len(supplyChainList.Items))
+	for i, t := range supplyChainList.Items {
+		kinds[i] = defines.Workload(t)
 	}
 
 	// we need to locate all types that have a corresponding *PullRequest type
@@ -115,7 +116,6 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 		if !found {
 			logrus.Infof("couldn't find a matching %s resource for PR-%d", k.Kind, pr.PullRequest.Number)
 		}
-
 	}
 
 	ResponseHTTP(w, http.StatusAccepted, "PR Accepted")
