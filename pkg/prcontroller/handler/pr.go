@@ -97,6 +97,10 @@ func PullRequest(pr *scm.PullRequestHook, w http.ResponseWriter) {
 
 				switch pr.Action.String() {
 				case "create", "updated", "opened", "reopened":
+					if pr.PullRequest.Draft {
+						deleteIfExists(Dynamic, u, w, v)
+						return
+					}
 					createOrUpdate(Dynamic, u, w, v)
 					return
 				case "merged", "closed":
