@@ -1,11 +1,10 @@
 module github.com/garethjevans/pr-controller
 
 go 1.22.0
-
-toolchain go1.22.2
+toolchain go1.22.4
 
 require (
-	github.com/jenkins-x/go-scm v1.14.35
+	github.com/jenkins-x/go-scm v1.14.37
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
