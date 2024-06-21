@@ -7,7 +7,7 @@ toolchain go1.22.2
 require (
 	github.com/jenkins-x/go-scm v1.14.35
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	k8s.io/apimachinery v0.30.1
 	k8s.io/client-go v0.30.1
@@ -16,7 +16,7 @@ require (
 require (
 	code.gitea.io/sdk/gitea v0.14.0 // indirect
 	github.com/bluekeyes/go-gitdiff v0.7.1 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
