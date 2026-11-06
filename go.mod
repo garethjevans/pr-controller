@@ -8,7 +8,7 @@ require (
 	github.com/jenkins-x/go-scm v1.14.35
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.1.0
 	k8s.io/apimachinery v0.30.3
 	k8s.io/client-go v0.30.3
 )
